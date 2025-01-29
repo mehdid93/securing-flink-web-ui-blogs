@@ -1,0 +1,18 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: flink-ui
+spec:
+  host: flink-ui.$(oc get ingresses.config/cluster -o jsonpath={.spec.domain})
+  to:
+    kind: Service
+    name: nginx-service
+    weight: 100
+  port:
+    targetPort: 8443
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
+    destinationCACertificate: |-
+  $(cat ./nginx.crt | sed 's/^/      /g')
+wildcardPolicy: None

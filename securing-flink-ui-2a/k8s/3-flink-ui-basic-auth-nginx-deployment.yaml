@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          volumeMounts:
+            - name: shared-volume
+              mountPath: /var/cache/nginx
+            - name: shared-volume
+              mountPath: /var/run
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: htpasswd-secret
+              mountPath: /etc/nginx/.htpasswd
+              subPath: .htpasswd
+            - name: nginx-tls
+              mountPath: /etc/nginx/tls
+      volumes:
+        - name: shared-volume
+          emptyDir: {}
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+        - name: nginx-tls
+          secret:
+            secretName: nginx-tls-secret
+        - name: htpasswd-secret
+          secret:
+            secretName: htpasswd-secret

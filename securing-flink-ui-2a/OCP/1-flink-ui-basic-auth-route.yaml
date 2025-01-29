@@ -1,0 +1,12 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: flink-ui
+spec:
+  to:
+    kind: Service
+    name: nginx-service
+  port:
+    targetPort: 8443
+  tls:
+    termination: passthrough

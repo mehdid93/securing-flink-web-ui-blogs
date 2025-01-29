@@ -1,0 +1,69 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: nginx-config
+data:
+  default.conf: |-
+    server {
+      listen       8443 ssl;
+      server_name  localhost;
+      ssl_certificate /etc/nginx/tls/nginx.crt;   
+      ssl_certificate_key /etc/nginx/tls/nginx.key;  
+    
+      access_by_lua '
+        local opts = {
+          redirect_uri = "<redirect_uri>",
+          discovery = "<discovery>",
+          client_id = "<client_id>",
+          client_secret = "<client_secret>",
+          logout_path = "/logout",
+          accept_none_alg = true,
+          session_contents = {id_token=true}
+        }
+    
+         -- call introspect for OAuth 2.0 Bearer Access Token validation
+        local res, err = require("resty.openidc").authenticate(opts)
+    
+         if err then
+          ngx.status = 403
+          ngx.say(err)
+          ngx.exit(ngx.HTTP_FORBIDDEN)
+        end
+      ';
+      location / {
+        proxy_pass <flink-rest-ui>;
+        proxy_set_header Host $host;
+      }
+    }
+  nginx.conf: |-
+    #user  nobody;
+    worker_processes  1;
+    error_log  /dev/stderr  error;
+    #pid        logs/nginx.pid;
+    events {
+        worker_connections  1024;
+    }
+    http {
+        lua_package_path '/.luarocks/share/lua/5.1/?.lua;;';
+        resolver <resolver_ip> valid=1s;
+        lua_ssl_trusted_certificate /etc/nginx/oidc/tls/oidc.crt;
+        include       mime.types;
+        default_type  application/octet-stream;
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+        access_log  /dev/stdout  main;
+        # See Move default writable paths to a dedicated directory (#119)
+        # https://github.com/openresty/docker-openresty/issues/119
+        client_body_temp_path /var/run/openresty/nginx-client-body;
+        proxy_temp_path       /var/run/openresty/nginx-proxy;
+        fastcgi_temp_path     /var/run/openresty/nginx-fastcgi;
+        uwsgi_temp_path       /var/run/openresty/nginx-uwsgi;
+        scgi_temp_path        /var/run/openresty/nginx-scgi;
+        sendfile        on;
+        #tcp_nopush     on;
+        #keepalive_timeout  0;
+        keepalive_timeout  65;
+        #gzip  on;
+        include /etc/nginx/conf.d/*.conf;
+    }
