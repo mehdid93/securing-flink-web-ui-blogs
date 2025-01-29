@@ -32,7 +32,7 @@ data:
       ';
       location / {
         proxy_pass <flink-rest-ui>;
-        proxy_set_header Host $host;
+        proxy_set_header Host \$host;
       }
     }
   nginx.conf: |-
